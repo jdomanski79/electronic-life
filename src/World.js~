@@ -1,0 +1,288 @@
+import React, { Component } from 'react';
+import './World.css';
+
+'use strict';
+console.clear();
+
+
+const borderWidth = 5;//px
+const turnTimeout = 200;
+
+const onStartPlay = true;
+
+const cellSize = 10;//px
+const deadCellColor = 'white';
+const bornCellColor = 'lightgrey'
+const aliveCellColor = 'black';
+
+
+class Vector {
+  constructor (x, y){
+    this.x = x;
+    this.y = y;
+  }
+  
+  plus(other){
+    return new Vector (this.x + other.x, this.y + other.y)
+  }  
+}
+
+const directions = {
+  'n' : new Vector(0,1),
+  'ne': new Vector(1,1),
+  'e' : new Vector(1,0),
+  'se': new Vector(1,-1),
+  's' : new Vector(0,-1),
+  'sw': new Vector(-1,-1),
+  'w' : new Vector(-1,0),
+  'nw': new Vector(-1,1),
+}
+
+
+function Cell(props){
+  let cellColor;
+  if (Number(props.state) === 0) cellColor = deadCellColor;
+  else if (Number(props.state) === 1) cellColor = bornCellColor;
+  else if (Number(props.state) === 2) cellColor = aliveCellColor;
+
+  let cellStyle = {
+    float: 'left',
+    width: cellSize + 'px',
+    height: cellSize + 'px',
+    backgroundColor: cellColor,
+    //border: '1px solid black',
+  }
+  return (
+          <div onClick={()=>props.onClick(props.vector)} style={cellStyle}></div>)
+}
+
+class World extends React.Component {
+  constructor (props){
+    super(props);
+    
+    let grid = [];
+    let width = Number(this.props.width);
+    let height = Number(this.props.height);
+    let population = 0;
+    
+    let randomCell;
+    for (let y = 0; y <= height-1; y++){
+      grid.push([]);
+      for (let x = 0; x <= width - 1; x++){
+        randomCell = Math.floor(Math.random() * 2);
+        randomCell = randomCell > 0 ? 1 : 0;
+        population += randomCell; 
+        grid[y].push(randomCell);
+      }
+    }
+    
+    this.state = {
+      grid: grid,
+      generations: 0,
+      population: population,
+    }
+    
+    this.isPlaying = onStartPlay;
+    this.turn = this.turn.bind(this);
+    this.start = this.start.bind(this);
+    this.play = this.play.bind(this);
+    this.step = this.step.bind(this);
+    this.clearGrid = this.clearGrid.bind(this);
+    this.handleCellClick = this.handleCellClick.bind(this);
+  }
+  
+  get(vector){
+    return this.state.grid[vector.y][vector.x]; //row y, column x
+  }
+  
+  set(vector, value){
+    this.setState(state => {
+      state.grid[vector.y][vector.x] = value;
+      return {grid: state.grid};
+    });
+  }
+  
+  isInside(vector) {
+    const width = this.props.width;
+    const height = this.props.height;
+    
+    return (vector.x >= 0) && (vector.x < width) &&
+           (vector.y >= 0) && (vector.y < height); 
+  }
+  
+  findNeighbours(vector){
+    let found = 0;
+    let cell;
+    //console.log('cell: ', vector)
+    for (let dir in directions) {
+      cell = vector.plus(directions[dir]);
+      if (this.isInside(cell)) {
+        //console.log('found ', this.get(cell),' neighbour in ', cell);
+        if (this.get(cell)) found++;
+      }
+    }
+    //console.log('found ', found, ' neighbours');
+    return found;
+  }
+  
+  turn(){
+    console.clear();
+    //console.log('Next turn..');
+    let population = 0;
+    let grid = []; // array of nextstep states
+    
+    let neighbours, cellCoords;
+    //debugger;
+    
+    grid = this.state.grid.map(
+      (row, y) => 
+        row.map(
+          (cellState,x) => {
+            neighbours = this.findNeighbours(new Vector(x,y));
+
+            if (cellState > 0) {
+              if (neighbours < 2 || neighbours > 3) {
+              return 0;
+              } else { 
+                population++;
+                return 2;
+              }
+            }
+
+            if (cellState === 0 && neighbours === 3) {
+              population++;
+              return 1;
+            }
+            return cellState;
+    }));
+
+    
+    
+    // for (let y = 0; y <= height - 1; y++){
+    //   grid.push([]);
+    //   for (let x = 0; x <= width - 1; x++){
+    //     cell = new Vector(x, y);
+    //     neighbours = this.findNeighbours(cell);
+    //     let cellState = this.get(cell);
+    //     //if alive
+    //     if (cellState > 0) { 
+    //     //Any live cell with fewer than two live neighbours dies, as if caused by underpopulation.
+    //     //Any live cell with two or three live neighbours lives on to the next generation.
+    //     //Any live cell with more than three live neighbours dies, as if by overpopulation
+    //       if (neighbours < 2 || neighbours > 3) {
+    //         grid[y].push(0); // next dead
+    //       } else {
+    //         grid[y].push(2); // next alive
+    //       }
+    //     //Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+    //     } else if (neighbours === 3){
+    //       grid[y].push(1); // next born
+    //       population++;
+    //     } else grid[y].push(0); //next dead
+    //     //console.log(cell,'is ', cellState,', has ', neighbours, ' neighbours, next state: ', grid[y][x], grid);
+    //   }
+    // }
+    //update state
+    let genUpdate = this.state.generations + 1;
+    this.setState({
+      grid: grid,
+      generations: genUpdate,
+      population: population,
+    })
+  }
+  
+  clearGrid(){
+    const width = this.props.width;
+    const height = this.props.height;
+    //debugger;
+    // stop 
+    this.isPlaying = false;
+    this.setState({generations: 0,
+                   population: 0});
+    // clear
+    for (let y = 0; y <= height - 1; y++){
+      for (let x = 0; x <= width - 1; x++){
+        this.set(new Vector(x,y), 0);
+      }
+    }
+  }
+  
+  play(){
+    if (this.isPlaying){
+      this.turn();
+      setTimeout(this.play, turnTimeout);
+    }
+  }
+  
+  step(){
+    this.isPlaying = false;
+    this.turn();
+  }
+  
+  start(){
+    //console.log(this.isPlaying);
+    this.isPlaying = !this.isPlaying;
+    if (this.isPlaying) this.play();
+  }
+  
+  handleCellClick(vector){
+    if (this.get(vector) > 0){
+      this.set(vector,0);
+    } else {
+      this.set(vector,1);
+      this.setState(state => {population: state.population++});
+    }
+  }
+  
+  componentDidMount(){
+    this.play();
+  }
+  
+  
+  render(){
+    //console.log(this.state.grid);
+    let playButton = this.isPlaying ? '||' : ('&#8883');
+    const rowStyle = {
+      height: cellSize + 'px',
+      width: this.props.width * cellSize + borderWidth * 2 + 'px',
+    }
+    
+    const worldStyle = {
+      width: this.props.width * cellSize + borderWidth * 2 + 'px',
+      height: this.props.height * cellSize + borderWidth * 2 + 'px',
+      border: borderWidth + 'px solid black',
+      margin: '10px auto',
+    }
+    
+    let world = this.state.grid.map((row, y) => (
+                  <div style={rowStyle}>
+                    {row.map((cell, x) => {
+                       let vector = new Vector(x,y);
+                       return (<Cell state={cell} 
+                                vector={vector}
+                                onClick={this.handleCellClick}/>
+                              )
+                      }
+                    )}
+                  </div>)
+      
+    )
+    
+    
+    return (
+      <div className='container'>
+        <p>Generations: {this.state.generations}, population now: {this.state.population}</p>
+        <div style={worldStyle}>
+          {world}
+        </div>
+        <div className='buttons'>
+          <button onClick={this.step}>Step</button>
+          <button onClick={this.start}>{playButton}</button>
+          <button onClick={this.clearGrid}>Clear!</button>
+        </div>
+      </div>
+    )
+  }
+}
+
+export default World;

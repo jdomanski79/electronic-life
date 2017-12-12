@@ -1,0 +1,34 @@
+*{
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body{
+  font-family: monospace;
+  margin: 0;
+  padding: 0;
+}
+#app{
+  margin: 0;
+}
+.container{
+  margin: 0;
+  width: 100%;
+  height: 100vh;
+  background: linear-gradient(to top, blue, lightblue);
+}
+.buttons{
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+button{
+  margin: 10px 20px;
+  width: 100px;
+  border: 1px solid black;
+  padding: 7px;
+  background-color: lightblue;
+}
+button:hover{
+  background-color: orange;
+}
